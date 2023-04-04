@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { of, OperatorFunction } from "rxjs";
+import { DependencyList, useEffect, useMemo, useRef, useState } from "react";
+import { catchError, of, OperatorFunction } from "rxjs";
 import { get, Path, PathValue } from "./select";
 import { Store } from "./store";
 
@@ -15,23 +15,17 @@ export const useStore = <T, A>(_store: Store<T, A>): T => {
 };
 
 export const useStoreTransform = <T, A, R>(
-  _store: Store<T, A>,
+  store: Store<T, A>,
   ob: OperatorFunction<T, R>
-): R => {
-  const [store, setStore] = useState<R>(() => {
-    let val!: R;
-    of(_store.value)
-      .pipe(ob)
-      .subscribe((data) => (val = data));
-    return val;
-  });
+): R | undefined => {
+  const [val, setVal] = useState<R | undefined>(undefined);
 
   useEffect(() => {
-    const sub = _store.state.pipe(ob).subscribe(setStore);
+    const sub = store.stateWithValue().pipe(ob).subscribe(setVal);
     return () => sub.unsubscribe();
-  }, [_store, ob]);
+  }, [store, ob]);
 
-  return store;
+  return val;
 };
 
 export const useSelectStore = <T, A, P extends Path<T>, R>(
@@ -49,22 +43,31 @@ export const useSelectStore = <T, A, P extends Path<T>, R>(
 };
 
 export const useSelectTransformStore = <T, A, P extends Path<T>, R>(
-  _store: Store<T, A>,
+  store: Store<T, A>,
   path: P,
   ob: OperatorFunction<PathValue<T, P>, R>
-): R => {
-  const [store, setStore] = useState<R>(() => {
-    let val!: R;
-    of(get(_store.value, path))
-      .pipe(ob)
-      .subscribe((data) => (val = data));
-    return val;
-  });
+): R | undefined => {
+  const [val, setVal] = useState<R | undefined>(undefined);
 
   useEffect(() => {
-    const sub = _store.select(path).pipe(ob).subscribe(setStore);
+    const sub = store.selectWithValue(path).pipe(ob).subscribe(setVal);
     return () => sub.unsubscribe();
-  }, [_store, path, ob]);
+  }, [store, path, ob]);
 
-  return store;
+  return val;
+};
+
+export const usePipe = <R, T>(
+  pipe: OperatorFunction<R, T>
+): OperatorFunction<R, T> => {
+  const refPipe = useRef(pipe);
+  return refPipe.current;
+};
+
+export const usePipeWithDeps = <R, T>(
+  pipe: OperatorFunction<R, T>,
+  deps: DependencyList = []
+): OperatorFunction<R, T> => {
+  const refPipe = useMemo(() => pipe, deps);
+  return refPipe;
 };

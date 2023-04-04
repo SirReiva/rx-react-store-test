@@ -36,6 +36,15 @@ export class Store<T, A> {
     return this.state.pipe(startWith(this.value), select<T, P>(path), skip(1));
   }
 
+  selectWithValue<P extends Path<T>>(path: P) {
+    if (this.sub.closed) throw new Error("Store Destroyed");
+    return this.state.pipe(startWith(this.value), select<T, P>(path));
+  }
+
+  stateWithValue() {
+    return this.state.pipe(startWith(this.value));
+  }
+
   dispatch(action: A) {
     if (this.sub.closed) throw new Error("Store Destroyed");
     this.actions.next(action);

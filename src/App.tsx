@@ -1,7 +1,12 @@
-import { filter, map, pipe } from "rxjs";
+import { map, pipe, switchMap } from "rxjs";
+import { ajax } from "rxjs/ajax";
 import "./App.css";
 import { Store } from "./rx-redux/store";
-import { useSelectStore, useSelectTransformStore } from "./rx-redux/useStore";
+import {
+  usePipe,
+  useSelectStore,
+  useSelectTransformStore,
+} from "./rx-redux/useStore";
 
 type Actions =
   | {
@@ -19,12 +24,8 @@ type Actions =
 
 const store = new Store(
   {
-    count: 0,
+    count: 1,
     count2: 0,
-    test: {
-      a: 5,
-      b: true,
-    },
   },
   (val, action: Actions) => {
     if (action.type === "ADD1")
@@ -52,19 +53,23 @@ const store = new Store(
 );
 
 const Count1 = () => {
-  const count = useSelectTransformStore(
+  const name = useSelectTransformStore(
     store,
     "count",
-    pipe(
-      filter((val) => val % 2 === 0),
-      map((val) => `Josyto ${val}`)
+    usePipe(
+      pipe(
+        switchMap((id) =>
+          ajax(`https://rickandmortyapi.com/api/character/${id}`)
+        ),
+        map((data: any) => data?.response?.name)
+      )
     )
   );
 
-  console.log("Count1");
+  console.log("Count1", name);
   return (
     <>
-      {count}
+      {name}
       <button type="button" onClick={() => store.dispatch({ type: "ADD1" })}>
         + 1
       </button>
@@ -77,7 +82,7 @@ const Count1 = () => {
 
 const Count2 = () => {
   const count = useSelectStore(store, "count2");
-  console.log("Count2");
+  console.log("Count2", count);
   return (
     <>
       {count}
